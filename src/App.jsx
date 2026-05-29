@@ -1,10 +1,10 @@
 // ============================================================================
-// DATA LINEAGE APP - UPGRADED & COLLABORATIVE WORKSPACE
+// DATA LINEAGE APP - COMPILER OPTIMIZED WORKSPACE
 // A React-based infinite canvas with universal ports, dynamic child-locking, 
 // section backup systems, versatile compilers, and High-Performance Ghost Dragging.
 // ============================================================================
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
     Database, Plus, Trash2, Settings2, Download, Upload,
     X, GripHorizontal, Link2, Palette, RefreshCw, ZoomIn, ZoomOut, Home,
@@ -54,7 +54,6 @@ const generateCurvePath = (x1, y1, x2, y2) => {
     return `M ${x1} ${y1} C ${x1 + cpOffset} ${y1}, ${x2 - cpOffset} ${y2}, ${x2} ${y2}`;
 };
 
-// --- Extracted pure coordinate logic for memoized nodes ---
 const getPortCoords = (table, portId, peerTable = null) => {
     if (!table) return { x: 0, y: 0 };
     const width = table.isUniversal ? 180 : TABLE_WIDTH;
@@ -64,7 +63,6 @@ const getPortCoords = (table, portId, peerTable = null) => {
     if (portId === 'univ_col' || portId === 'univ_col_left') return { x: table.x, y: table.y + 65 };
     if (portId === 'univ_col_right') return { x: table.x + width, y: table.y + 65 };
     
-    // Safely check columns array
     const cols = table.columns || [];
     const colIndex = cols.findIndex(c => c.id === portId);
     if (colIndex === -1) return { x: table.x, y: table.y };
@@ -83,57 +81,43 @@ const getInputNodePos = (table, colId, sourceTable = null) => {
     return getPortCoords(table, mappedColId, sourceTable);
 };
 
-
 // ============================================================================
-// MEMOIZED RENDER COMPONENTS (Bypasses Re-renders During Ghost Drag)
+// RENDER COMPONENTS
 // ============================================================================
-const SectionBox = React.memo(({ sec, isGhosted, handlers }) => {
+const SectionBox = ({ sec, isGhosted, onDragStart, onResizeStart, onToggleLock, onExport, onEdit }) => {
     if (!sec) return null;
     
     return (
         <div
             className={`absolute rounded-xl border-2 border-dashed border-slate-300 pointer-events-none section-box-panel shadow-sm transition-opacity duration-200 ${isGhosted ? 'opacity-30 grayscale' : 'opacity-100'}`}
-            style={{ 
-                left: sec.x, top: sec.y, 
-                width: sec.width, height: sec.height, 
-                backgroundColor: sec.color || '#f8fafc', 
-                zIndex: isGhosted ? 5 : 0 
-            }}
+            style={{ left: sec.x, top: sec.y, width: sec.width, height: sec.height, backgroundColor: sec.color || '#f8fafc', zIndex: isGhosted ? 5 : 0 }}
         >
-            <div 
-                className="absolute top-0 left-0 right-0 h-10 px-3 bg-slate-200/60 rounded-t-[10px] border-b border-slate-300 flex items-center justify-between pointer-events-auto cursor-grab active:cursor-grabbing" 
-                onMouseDown={(e) => handlers.onSectionDragStart(e, sec)} 
-                onTouchStart={(e) => handlers.onSectionDragStart(e, sec)}
-            >
+            <div className="absolute top-0 left-0 right-0 h-10 px-3 bg-slate-200/60 rounded-t-[10px] border-b border-slate-300 flex items-center justify-between pointer-events-auto cursor-grab active:cursor-grabbing" onMouseDown={(e) => onDragStart(e, sec)} onTouchStart={(e) => onDragStart(e, sec)}>
                 <div className="flex items-center space-x-1.5 shrink-0 overflow-hidden">
                     <Move className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                     <span className="font-bold text-xs text-slate-700 truncate select-none">{sec.title}</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
-                    <button onClick={(e) => { e.stopPropagation(); handlers.onToggleLock(sec.id); }} className="p-1 hover:bg-slate-300 rounded text-slate-600 transition" title={sec.locked !== false ? "Lock Bound Children inside" : "Children drag independently"}>
+                    <button onClick={(e) => { e.stopPropagation(); onToggleLock(sec.id); }} className="p-1 hover:bg-slate-300 rounded text-slate-600 transition" title={sec.locked !== false ? "Lock Bound Children inside" : "Children drag independently"}>
                         {sec.locked !== false ? <Lock className="w-3.5 h-3.5 text-indigo-600" /> : <Unlock className="w-3.5 h-3.5" />}
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); handlers.onExport(sec); }} className="p-1 hover:bg-slate-300 rounded text-slate-600 transition" title="Export Modular Section">
+                    <button onClick={(e) => { e.stopPropagation(); onExport(sec); }} className="p-1 hover:bg-slate-300 rounded text-slate-600 transition" title="Export Modular Section">
                         <Download className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); handlers.onSectionEdit(sec); }} className="p-1 hover:bg-slate-300 rounded text-slate-600 transition">
+                    <button onClick={(e) => { e.stopPropagation(); onEdit(sec); }} className="p-1 hover:bg-slate-300 rounded text-slate-600 transition">
                         <Settings2 className="w-3.5 h-3.5" />
                     </button>
                 </div>
             </div>
             
-            <div 
-                className="absolute bottom-1 right-1 w-5 h-5 cursor-se-resize pointer-events-auto flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors" 
-                onMouseDown={(e) => handlers.onSectionResizeStart(e, sec)} 
-                onTouchStart={(e) => handlers.onSectionResizeStart(e, sec)}
-            >
+            <div className="absolute bottom-1 right-1 w-5 h-5 cursor-se-resize pointer-events-auto flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors" onMouseDown={(e) => onResizeStart(e, sec)} onTouchStart={(e) => onResizeStart(e, sec)}>
                 <svg width="10" height="10" viewBox="0 0 10 10" className="fill-current"><path d="M10,0 L10,10 L0,10 Z" /></svg>
             </div>
         </div>
     );
-});
+};
 
-const ConnectionLine = React.memo(({ conn, sourceTable, targetTable, isHovered, viewportScale, handlers }) => {
+const ConnectionLine = ({ conn, sourceTable, targetTable, isHovered, viewportScale, onHover, onHoverEnd, onClick }) => {
     if (!conn || !sourceTable || !targetTable) return null;
 
     const start = getOutputNodePos(sourceTable, conn.sourceCol, targetTable);
@@ -146,32 +130,18 @@ const ConnectionLine = React.memo(({ conn, sourceTable, targetTable, isHovered, 
     return (
         <g className="pointer-events-auto connection-line">
             <path
-                d={pathD} 
-                fill="none" 
-                stroke={isHovered ? '#6366f1' : (sourceTable.color || '#94a3b8')} 
-                strokeWidth={(isHovered ? 4 : 2.5) / (viewportScale || 1)} 
-                strokeDasharray={isHeaderConn ? "6,4" : undefined}
-                className="transition-all cursor-pointer" 
-                onMouseEnter={(e) => handlers.onConnHover(e, conn.id)} 
-                onMouseLeave={handlers.onConnHoverEnd} 
-                onClick={() => handlers.onConnClick(conn)}
+                d={pathD} fill="none" stroke={isHovered ? '#6366f1' : (sourceTable.color || '#94a3b8')} strokeWidth={(isHovered ? 4 : 2.5) / (viewportScale || 1)} strokeDasharray={isHeaderConn ? "6,4" : undefined} className="transition-all cursor-pointer" 
+                onMouseEnter={(e) => onHover(e, conn.id)} onMouseLeave={onHoverEnd} onClick={() => onClick(conn)}
             />
-            {/* Thicker transparent path for easier hover/clicking */}
             <path
-                d={pathD} 
-                fill="none" 
-                stroke="transparent" 
-                strokeWidth={24 / (viewportScale || 1)} 
-                className="cursor-pointer"
-                onMouseEnter={(e) => handlers.onConnHover(e, conn.id)} 
-                onMouseLeave={handlers.onConnHoverEnd} 
-                onClick={() => handlers.onConnClick(conn)}
+                d={pathD} fill="none" stroke="transparent" strokeWidth={24 / (viewportScale || 1)} className="cursor-pointer"
+                onMouseEnter={(e) => onHover(e, conn.id)} onMouseLeave={onHoverEnd} onClick={() => onClick(conn)}
             />
         </g>
     );
-});
+};
 
-const TableNode = React.memo(({ table, isGhosted, handlers }) => {
+const TableNode = ({ table, isGhosted, onDragStart, onEdit, onConnectionStart }) => {
     if (!table) return null;
 
     const tableColor = table.color || '#475569';
@@ -180,83 +150,52 @@ const TableNode = React.memo(({ table, isGhosted, handlers }) => {
 
     if (table.isUniversal) {
         return (
-            <div
-                className={`table-node absolute bg-white rounded-lg shadow-md border-2 flex flex-col pointer-events-auto transition-opacity duration-200 ${isGhosted ? 'opacity-30 grayscale' : 'opacity-100'}`}
-                style={{ left: table.x, top: table.y, width: 180, zIndex: isGhosted ? 5 : 10, borderColor: tableColor }}
-            >
-                <div 
-                    className="flex items-center justify-between px-2 h-9 rounded-t-[5px] cursor-grab active:cursor-grabbing" 
-                    style={{ backgroundColor: tableColor, color: textColor }} 
-                    onMouseDown={(e) => handlers.onTableDragStart(e, table)} 
-                    onTouchStart={(e) => handlers.onTableDragStart(e, table)}
-                >
+            <div className={`table-node absolute bg-white rounded-lg shadow-md border-2 flex flex-col pointer-events-auto transition-opacity duration-200 ${isGhosted ? 'opacity-30 grayscale' : 'opacity-100'}`} style={{ left: table.x, top: table.y, width: 180, zIndex: isGhosted ? 5 : 10, borderColor: tableColor }}>
+                <div className="flex items-center justify-between px-2 h-9 rounded-t-[5px] cursor-grab active:cursor-grabbing" style={{ backgroundColor: tableColor, color: textColor }} onMouseDown={(e) => onDragStart(e, table)} onTouchStart={(e) => onDragStart(e, table)}>
                     <div className="flex items-center space-x-1 overflow-hidden pointer-events-none">
-                        <GripHorizontal className="w-3.5 h-3.5 shrink-0" style={{ opacity: 0.8 }} />
-                        <span className="font-semibold truncate text-xs">{table.name}</span>
+                        <GripHorizontal className="w-3.5 h-3.5 shrink-0" style={{ opacity: 0.8 }} /><span className="font-semibold truncate text-xs">{table.name}</span>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); handlers.onTableEdit(table); }} onTouchStart={(e) => e.stopPropagation()} className="p-1 rounded transition hover:bg-black/20" style={{ color: textColor }}>
+                    <button onClick={(e) => { e.stopPropagation(); onEdit(table); }} onTouchStart={(e) => e.stopPropagation()} className="p-1 rounded transition hover:bg-black/20" style={{ color: textColor }}>
                         <Settings2 className="w-3.5 h-3.5" />
                     </button>
                 </div>
                 <div className="p-3 text-center bg-indigo-50/20 rounded-b-lg relative flex flex-col items-center justify-center min-h-[60px] border-t border-slate-100">
                     <span className="text-xs font-bold text-indigo-950 font-mono italic select-none break-all">{table.text || 'Loop Relay'}</span>
-                    
-                    {/* Universal Ports */}
-                    <div className="input-port absolute -left-3 top-[10px] w-6 h-6 flex items-center justify-center z-20 cursor-crosshair hover:scale-125 transition-transform" data-table-id={table.id} data-col-id="__HEADER_LEFT__" onMouseDown={(e) => handlers.onConnectionStart(e, table.id, '__HEADER_LEFT__')} onTouchStart={(e) => handlers.onConnectionStart(e, table.id, '__HEADER_LEFT__')}><div className="w-3.5 h-3.5 bg-white border-2 rotate-45" style={{ borderColor: tableColor }} /></div>
-                    <div className="input-port absolute -left-3 top-[34px] w-6 h-6 flex items-center justify-center z-20 cursor-crosshair hover:scale-125 transition-transform" data-table-id={table.id} data-col-id="univ_col_left" onMouseDown={(e) => handlers.onConnectionStart(e, table.id, 'univ_col_left')} onTouchStart={(e) => handlers.onConnectionStart(e, table.id, 'univ_col_left')}><div className="w-3.5 h-3.5 bg-white border-2 rounded-full" style={{ borderColor: tableColor }} /></div>
-                    <div className="input-port absolute -right-3 top-[10px] w-6 h-6 flex items-center justify-center z-20 cursor-crosshair hover:scale-125 transition-transform" data-table-id={table.id} data-col-id="__HEADER_RIGHT__" onMouseDown={(e) => handlers.onConnectionStart(e, table.id, '__HEADER_RIGHT__')} onTouchStart={(e) => handlers.onConnectionStart(e, table.id, '__HEADER_RIGHT__')}><div className="w-3.5 h-3.5 bg-white border-2 rotate-45" style={{ borderColor: tableColor }} /></div>
-                    <div className="input-port absolute -right-3 top-[34px] w-6 h-6 flex items-center justify-center z-20 cursor-crosshair hover:scale-125 transition-transform" data-table-id={table.id} data-col-id="univ_col_right" onMouseDown={(e) => handlers.onConnectionStart(e, table.id, 'univ_col_right')} onTouchStart={(e) => handlers.onConnectionStart(e, table.id, 'univ_col_right')}><div className="w-3.5 h-3.5 bg-white border-2 rounded-full" style={{ borderColor: tableColor }} /></div>
+                    <div className="input-port absolute -left-3 top-[10px] w-6 h-6 flex items-center justify-center z-20 cursor-crosshair hover:scale-125 transition-transform" data-table-id={table.id} data-col-id="__HEADER_LEFT__" onMouseDown={(e) => onConnectionStart(e, table.id, '__HEADER_LEFT__')} onTouchStart={(e) => onConnectionStart(e, table.id, '__HEADER_LEFT__')}><div className="w-3.5 h-3.5 bg-white border-2 rotate-45" style={{ borderColor: tableColor }} /></div>
+                    <div className="input-port absolute -left-3 top-[34px] w-6 h-6 flex items-center justify-center z-20 cursor-crosshair hover:scale-125 transition-transform" data-table-id={table.id} data-col-id="univ_col_left" onMouseDown={(e) => onConnectionStart(e, table.id, 'univ_col_left')} onTouchStart={(e) => onConnectionStart(e, table.id, 'univ_col_left')}><div className="w-3.5 h-3.5 bg-white border-2 rounded-full" style={{ borderColor: tableColor }} /></div>
+                    <div className="input-port absolute -right-3 top-[10px] w-6 h-6 flex items-center justify-center z-20 cursor-crosshair hover:scale-125 transition-transform" data-table-id={table.id} data-col-id="__HEADER_RIGHT__" onMouseDown={(e) => onConnectionStart(e, table.id, '__HEADER_RIGHT__')} onTouchStart={(e) => onConnectionStart(e, table.id, '__HEADER_RIGHT__')}><div className="w-3.5 h-3.5 bg-white border-2 rotate-45" style={{ borderColor: tableColor }} /></div>
+                    <div className="input-port absolute -right-3 top-[34px] w-6 h-6 flex items-center justify-center z-20 cursor-crosshair hover:scale-125 transition-transform" data-table-id={table.id} data-col-id="univ_col_right" onMouseDown={(e) => onConnectionStart(e, table.id, 'univ_col_right')} onTouchStart={(e) => onConnectionStart(e, table.id, 'univ_col_right')}><div className="w-3.5 h-3.5 bg-white border-2 rounded-full" style={{ borderColor: tableColor }} /></div>
                 </div>
             </div>
         );
     }
 
     return (
-        <div
-            className={`table-node absolute bg-white rounded-lg shadow-md border-2 flex flex-col pointer-events-auto transition-opacity duration-200 ${isGhosted ? 'opacity-30 grayscale' : 'opacity-100'}`}
-            style={{ left: table.x, top: table.y, width: TABLE_WIDTH, zIndex: isGhosted ? 5 : 10, borderColor: tableColor }}
-        >
-            <div 
-                className="flex items-center justify-between px-3 h-[44px] rounded-t-[5px] cursor-grab active:cursor-grabbing relative" 
-                style={{ backgroundColor: tableColor, color: textColor }} 
-                onMouseDown={(e) => handlers.onTableDragStart(e, table)} 
-                onTouchStart={(e) => handlers.onTableDragStart(e, table)}
-            >
+        <div className={`table-node absolute bg-white rounded-lg shadow-md border-2 flex flex-col pointer-events-auto transition-opacity duration-200 ${isGhosted ? 'opacity-30 grayscale' : 'opacity-100'}`} style={{ left: table.x, top: table.y, width: TABLE_WIDTH, zIndex: isGhosted ? 5 : 10, borderColor: tableColor }}>
+            <div className="flex items-center justify-between px-3 h-[44px] rounded-t-[5px] cursor-grab active:cursor-grabbing relative" style={{ backgroundColor: tableColor, color: textColor }} onMouseDown={(e) => onDragStart(e, table)} onTouchStart={(e) => onDragStart(e, table)}>
                 <div className="flex items-center space-x-2 overflow-hidden pointer-events-none">
-                    <GripHorizontal className="w-4 h-4 shrink-0" style={{ opacity: 0.8 }} />
-                    <span className="font-semibold truncate text-sm">{table.name}</span>
+                    <GripHorizontal className="w-4 h-4 shrink-0" style={{ opacity: 0.8 }} /><span className="font-semibold truncate text-sm">{table.name}</span>
                 </div>
-                
-                {/* Header Ports */}
-                <div className="input-port absolute -left-3.5 top-[10px] w-6 h-6 flex items-center justify-center z-20 pointer-events-auto cursor-crosshair hover:scale-125 transition-transform" data-table-id={table.id} data-col-id="__HEADER_LEFT__" onMouseDown={(e) => handlers.onConnectionStart(e, table.id, '__HEADER_LEFT__')} onTouchStart={(e) => handlers.onConnectionStart(e, table.id, '__HEADER_LEFT__')}><div className="w-3.5 h-3.5 bg-white border-2 rotate-45" style={{ borderColor: tableColor }} /></div>
-                <div className="input-port absolute -right-3.5 top-[10px] w-6 h-6 flex items-center justify-center z-20 cursor-crosshair hover:scale-125 transition-transform pointer-events-auto" data-table-id={table.id} data-col-id="__HEADER_RIGHT__" onMouseDown={(e) => handlers.onConnectionStart(e, table.id, '__HEADER_RIGHT__')} onTouchStart={(e) => handlers.onConnectionStart(e, table.id, '__HEADER_RIGHT__')}><div className="w-3.5 h-3.5 bg-white border-2 rotate-45" style={{ borderColor: tableColor }} /></div>
-                
-                <button onClick={(e) => { e.stopPropagation(); handlers.onTableEdit(table); }} onTouchStart={(e) => e.stopPropagation()} className="p-1.5 rounded transition hover:bg-black/20" style={{ color: textColor }}>
-                    <Settings2 className="w-4 h-4" />
-                </button>
+                <div className="input-port absolute -left-3.5 top-[10px] w-6 h-6 flex items-center justify-center z-20 pointer-events-auto cursor-crosshair hover:scale-125 transition-transform" data-table-id={table.id} data-col-id="__HEADER_LEFT__" onMouseDown={(e) => onConnectionStart(e, table.id, '__HEADER_LEFT__')} onTouchStart={(e) => onConnectionStart(e, table.id, '__HEADER_LEFT__')}><div className="w-3.5 h-3.5 bg-white border-2 rotate-45" style={{ borderColor: tableColor }} /></div>
+                <div className="input-port absolute -right-3.5 top-[10px] w-6 h-6 flex items-center justify-center z-20 cursor-crosshair hover:scale-125 transition-transform pointer-events-auto" data-table-id={table.id} data-col-id="__HEADER_RIGHT__" onMouseDown={(e) => onConnectionStart(e, table.id, '__HEADER_RIGHT__')} onTouchStart={(e) => onConnectionStart(e, table.id, '__HEADER_RIGHT__')}><div className="w-3.5 h-3.5 bg-white border-2 rotate-45" style={{ borderColor: tableColor }} /></div>
+                <button onClick={(e) => { e.stopPropagation(); onEdit(table); }} onTouchStart={(e) => e.stopPropagation()} className="p-1.5 rounded transition hover:bg-black/20" style={{ color: textColor }}><Settings2 className="w-4 h-4" /></button>
             </div>
-            
             <div className="py-2 relative flex-1 bg-white rounded-b-lg">
                 {columns.map((col) => (
                     <div key={col.id} className="group relative flex justify-between items-center px-3 hover:bg-slate-50 transition-colors" style={{ height: COL_HEIGHT }}>
                         <div className="flex items-center space-x-2 overflow-hidden flex-1">
-                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: tableColor }}></span>
-                            <span className="font-medium text-slate-700 text-xs md:text-sm truncate">{col.name}</span>
-                            {col.description && <Info className="w-3 h-3 text-slate-400 shrink-0 outline-none" title={col.description} />}
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: tableColor }}></span><span className="font-medium text-slate-700 text-xs md:text-sm truncate">{col.name}</span>{col.description && <Info className="w-3 h-3 text-slate-400 shrink-0 outline-none" title={col.description} />}
                         </div>
                         <span className="text-[10px] text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase ml-2">{col.type}</span>
-                        
-                        {/* Column Ports */}
                         <div className="input-port absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 rounded-full transition-transform z-20" style={{ borderColor: tableColor }} data-table-id={table.id} data-col-id={col.id} />
-                        <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 rounded-full cursor-crosshair hover:scale-125 transition-transform z-20" style={{ borderColor: tableColor }} onMouseDown={(e) => handlers.onConnectionStart(e, table.id, col.id)} onTouchStart={(e) => handlers.onConnectionStart(e, table.id, col.id)} />
+                        <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 rounded-full cursor-crosshair hover:scale-125 transition-transform z-20" style={{ borderColor: tableColor }} onMouseDown={(e) => onConnectionStart(e, table.id, col.id)} onTouchStart={(e) => onConnectionStart(e, table.id, col.id)} />
                     </div>
                 ))}
                 {columns.length === 0 && <div className="text-sm text-slate-400 italic text-center py-4">No columns</div>}
             </div>
         </div>
     );
-});
-
+};
 
 // ============================================================================
 // COMPONENT WORKSPACE (Main App)
@@ -286,12 +225,9 @@ export default function App() {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 });
     
-    // Core references
     const wrapperRef = useRef(null);
     const pinchRef = useRef({ dist: null, center: null });
-    const activeHandlersRef = useRef({});
 
-    // HIGH PERFORMANCE GHOST DRAG STATE
     const [activeDrag, setActiveDrag] = useState(null); 
     const [isPanningCanvas, setIsPanningCanvas] = useState(false);
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -334,10 +270,7 @@ export default function App() {
     const toCanvasCoords = (clientX, clientY) => {
         const rect = wrapperRef.current?.getBoundingClientRect();
         if (!rect) return { x: 0, y: 0 };
-        return { 
-            x: (clientX - rect.left - viewport.x) / viewport.scale, 
-            y: (clientY - rect.top - viewport.y) / viewport.scale 
-        };
+        return { x: (clientX - rect.left - viewport.x) / viewport.scale, y: (clientY - rect.top - viewport.y) / viewport.scale };
     };
 
     const doZoom = (factor, originX = null, originY = null) => {
@@ -347,11 +280,7 @@ export default function App() {
             if (!rect) return prev;
             const cX = originX !== null ? originX : rect.width / 2;
             const cY = originY !== null ? originY : rect.height / 2;
-            return { 
-                x: cX - (cX - prev.x) * (newScale / prev.scale), 
-                y: cY - (cY - prev.y) * (newScale / prev.scale), 
-                scale: newScale 
-            };
+            return { x: cX - (cX - prev.x) * (newScale / prev.scale), y: cY - (cY - prev.y) * (newScale / prev.scale), scale: newScale };
         });
     };
 
@@ -368,7 +297,6 @@ export default function App() {
         setPanOffset({ x: coords.x - viewport.x, y: coords.y - viewport.y });
     };
 
-    // --- High Performance GHOST Handler Setups ---
     const handleTableDragStart = (e, table) => {
         e.stopPropagation(); 
         if (e.touches?.length > 1) return;
@@ -377,12 +305,7 @@ export default function App() {
         const canvasCoords = toCanvasCoords(coords.x, coords.y);
         
         setActiveDrag({
-            type: 'table', 
-            id: table.id,
-            offsetX: canvasCoords.x - table.x, 
-            offsetY: canvasCoords.y - table.y,
-            x: table.x, 
-            y: table.y,
+            type: 'table', id: table.id, offsetX: canvasCoords.x - table.x, offsetY: canvasCoords.y - table.y, x: table.x, y: table.y,
             w: table.isUniversal ? 180 : TABLE_WIDTH,
             h: table.isUniversal ? 100 : HEADER_HEIGHT + ((table.columns || []).length * COL_HEIGHT) + PADDING_TOP + 12
         });
@@ -399,25 +322,13 @@ export default function App() {
         if (sec.locked !== false) {
             const children = tables.filter(t => t.parentId === sec.id || (t.x >= sec.x && t.x <= sec.x + sec.width && t.y >= sec.y && t.y <= sec.y + sec.height));
             childrenNodes = children.map(t => ({
-                id: t.id, 
-                dx: t.x - sec.x, 
-                dy: t.y - sec.y,
+                id: t.id, dx: t.x - sec.x, dy: t.y - sec.y,
                 w: t.isUniversal ? 180 : TABLE_WIDTH,
                 h: t.isUniversal ? 100 : HEADER_HEIGHT + ((t.columns || []).length * COL_HEIGHT) + PADDING_TOP + 12
             }));
         }
 
-        setActiveDrag({
-            type: 'section', 
-            id: sec.id,
-            offsetX: canvasCoords.x - sec.x, 
-            offsetY: canvasCoords.y - sec.y,
-            x: sec.x, 
-            y: sec.y, 
-            w: sec.width, 
-            h: sec.height,
-            children: childrenNodes
-        });
+        setActiveDrag({ type: 'section', id: sec.id, offsetX: canvasCoords.x - sec.x, offsetY: canvasCoords.y - sec.y, x: sec.x, y: sec.y, w: sec.width, h: sec.height, children: childrenNodes });
     };
 
     const handleSectionResizeStart = (e, sec) => {
@@ -427,63 +338,27 @@ export default function App() {
         const coords = getClientCoords(e); 
         const canvasCoords = toCanvasCoords(coords.x, coords.y);
         
-        setActiveDrag({ 
-            type: 'sectionResize', 
-            id: sec.id, 
-            startX: canvasCoords.x, 
-            startY: canvasCoords.y, 
-            startW: sec.width, 
-            startH: sec.height, 
-            x: sec.x, 
-            y: sec.y, 
-            w: sec.width, 
-            h: sec.height 
-        });
+        setActiveDrag({ type: 'sectionResize', id: sec.id, startX: canvasCoords.x, startY: canvasCoords.y, startW: sec.width, startH: sec.height, x: sec.x, y: sec.y, w: sec.width, h: sec.height });
     };
 
-    // Keep memoized references strictly updated
-    useEffect(() => {
-        activeHandlersRef.current = {
-            handleTableDragStart, 
-            handleSectionDragStart, 
-            handleSectionResizeStart,
-            handleConnectionStart: (e, tableId, colId) => { 
-                e.stopPropagation(); 
-                setConnectingFrom({ tableId, colId }); 
-                setMousePos(toCanvasCoords(getClientCoords(e).x, getClientCoords(e).y)); 
-            },
-            toggleSectionLock: (id) => setSections(prev => prev.map(s => s.id === id ? { ...s, locked: s.locked === false ? true : false } : s)),
-            exportSingleSection: (sec) => {
-                const childTables = tables.filter(t => t.parentId === sec.id || (t.x >= sec.x && t.x <= sec.x + sec.width && t.y >= sec.y && t.y <= sec.y + sec.height));
-                const childTableIds = childTables.map(t => t.id);
-                const internalConns = connections.filter(c => childTableIds.includes(c.sourceTable) && childTableIds.includes(c.targetTable));
-                const exportedObject = { type: "single_section_modular", section: { ...sec, children: childTableIds }, tables: childTables, connections: internalConns };
-                triggerDownload("data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportedObject, null, 2)), `section_${sec.title.replace(/\s+/g, '_')}_modular.json`);
-            },
-            setEditingSection, 
-            setEditingTable, 
-            setEditingConnection, 
-            setHoveredConnection, 
-            setHoverPos
-        };
-    });
+    const handleConnectionStart = (e, tableId, colId) => { 
+        e.stopPropagation(); 
+        setConnectingFrom({ tableId, colId }); 
+        setMousePos(toCanvasCoords(getClientCoords(e).x, getClientCoords(e).y)); 
+    };
 
-    const stableHandlers = useMemo(() => ({
-        onTableDragStart: (e, table) => activeHandlersRef.current.handleTableDragStart(e, table),
-        onTableEdit: (table) => activeHandlersRef.current.setEditingTable(table),
-        onConnectionStart: (e, tableId, colId) => activeHandlersRef.current.handleConnectionStart(e, tableId, colId),
-        onSectionDragStart: (e, sec) => activeHandlersRef.current.handleSectionDragStart(e, sec),
-        onSectionResizeStart: (e, sec) => activeHandlersRef.current.handleSectionResizeStart(e, sec),
-        onToggleLock: (id) => activeHandlersRef.current.toggleSectionLock(id),
-        onExport: (sec) => activeHandlersRef.current.exportSingleSection(sec),
-        onSectionEdit: (sec) => activeHandlersRef.current.setEditingSection(sec),
-        onConnHover: (e, id) => { 
-            activeHandlersRef.current.setHoveredConnection(id); 
-            activeHandlersRef.current.setHoverPos({ x: e.clientX, y: e.clientY }); 
-        },
-        onConnHoverEnd: () => activeHandlersRef.current.setHoveredConnection(null),
-        onConnClick: (conn) => activeHandlersRef.current.setEditingConnection(conn)
-    }), []);
+    const toggleSectionLock = (id) => {
+        setSections(prev => prev.map(s => s.id === id ? { ...s, locked: s.locked === false ? true : false } : s));
+    };
+
+    const handleConnHover = (e, id) => { 
+        setHoveredConnection(id); 
+        setHoverPos({ x: e.clientX, y: e.clientY }); 
+    };
+
+    const handleConnHoverEnd = () => {
+        setHoveredConnection(null);
+    };
 
     const handleGlobalMove = (e) => {
         if (e.touches && e.touches.length === 2) {
@@ -497,11 +372,7 @@ export default function App() {
                     const newScale = Math.max(0.01, Math.min(prev.scale * factor, 100));
                     const rect = wrapperRef.current.getBoundingClientRect();
                     const cX = center.x - rect.left, cY = center.y - rect.top;
-                    return { 
-                        x: cX - (cX - prev.x) * (newScale / prev.scale) + (center.x - pinchRef.current.center.x), 
-                        y: cY - (cY - prev.y) * (newScale / prev.scale) + (center.y - pinchRef.current.center.y), 
-                        scale: newScale 
-                    };
+                    return { x: cX - (cX - prev.x) * (newScale / prev.scale) + (center.x - pinchRef.current.center.x), y: cY - (cY - prev.y) * (newScale / prev.scale) + (center.y - pinchRef.current.center.y), scale: newScale };
                 });
             }
             pinchRef.current = { dist, center }; 
@@ -517,16 +388,11 @@ export default function App() {
         const canvasCoords = toCanvasCoords(coords.x, coords.y);
         if (connectingFrom) setMousePos(canvasCoords);
 
-        // Update Ghost Overlay Position Only
         if (activeDrag) {
             setActiveDrag(prev => {
                 if (!prev) return null;
-                if (prev.type === 'table' || prev.type === 'section') {
-                    return { ...prev, x: canvasCoords.x - prev.offsetX, y: canvasCoords.y - prev.offsetY };
-                }
-                if (prev.type === 'sectionResize') {
-                    return { ...prev, w: Math.max(150, prev.startW + (canvasCoords.x - prev.startX)), h: Math.max(100, prev.startH + (canvasCoords.y - prev.startY)) };
-                }
+                if (prev.type === 'table' || prev.type === 'section') return { ...prev, x: canvasCoords.x - prev.offsetX, y: canvasCoords.y - prev.offsetY };
+                if (prev.type === 'sectionResize') return { ...prev, w: Math.max(150, prev.startW + (canvasCoords.x - prev.startX)), h: Math.max(100, prev.startH + (canvasCoords.y - prev.startY)) };
                 return prev;
             });
             return;
@@ -539,7 +405,6 @@ export default function App() {
         pinchRef.current = { dist: null, center: null };
         if (isPanningCanvas) setIsPanningCanvas(false);
 
-        // Apply Ghost overlay data back to main React state
         if (activeDrag) {
             if (activeDrag.type === 'table') {
                 const containingSec = sections.find(sec => activeDrag.x >= sec.x && activeDrag.x <= sec.x + sec.width && activeDrag.y >= sec.y && activeDrag.y <= sec.y + sec.height);
@@ -578,8 +443,16 @@ export default function App() {
     };
 
     // ============================================================================
-    // EXPORTS & MISC LOGIC
+    // EXPORTS & IMPORTS
     // ============================================================================
+    
+    const exportSingleSection = (sec) => {
+        const childTables = tables.filter(t => t.parentId === sec.id || (t.x >= sec.x && t.x <= sec.x + sec.width && t.y >= sec.y && t.y <= sec.y + sec.height));
+        const childTableIds = childTables.map(t => t.id);
+        const internalConns = connections.filter(c => childTableIds.includes(c.sourceTable) && childTableIds.includes(c.targetTable));
+        const exportedObject = { type: "single_section_modular", section: { ...sec, children: childTableIds }, tables: childTables, connections: internalConns };
+        triggerDownload("data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportedObject, null, 2)), `section_${sec.title.replace(/\s+/g, '_')}_modular.json`);
+    };
 
     const handleImportSingleSection = (e) => {
         const file = e.target.files[0]; 
@@ -601,8 +474,7 @@ export default function App() {
                     });
                     
                     const newConns = (data.connections || []).map(c => ({ 
-                        ...c, 
-                        id: `c_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, 
+                        ...c, id: `c_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, 
                         sourceTable: oldToNewIdMap[c.sourceTable] || c.sourceTable, 
                         targetTable: oldToNewIdMap[c.targetTable] || c.targetTable 
                     }));
@@ -611,31 +483,35 @@ export default function App() {
                     setTables(prev => [...prev, ...newTables]); 
                     setConnections(prev => [...prev, ...newConns]);
                 } else throw new Error("Invalid modular section schema.");
-            } catch (err) { alert("Modular import failed: " + err.message); }
+            } catch (error) { alert("Modular import failed: " + error.message); }
         }; 
         reader.readAsText(file); 
         e.target.value = null;
     };
 
+    const validConnectionsToShow = connections.filter(conn => {
+        const srcTable = tables.find(t => t.id === conn.sourceTable);
+        const tgtTable = tables.find(t => t.id === conn.targetTable);
+        if (!srcTable || !tgtTable) return false;
+        
+        const sourceValid = conn.sourceCol?.includes('HEADER') || conn.sourceCol?.includes('univ_col') || srcTable.columns?.some(c => c.id === conn.sourceCol);
+        const targetValid = conn.targetCol?.includes('HEADER') || conn.targetCol?.includes('univ_col') || tgtTable.columns?.some(c => c.id === conn.targetCol);
+        
+        return sourceValid && targetValid;
+    });
+
     const exportAsSVG = () => {
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        sections.forEach(s => { 
-            minX = Math.min(minX, s.x); minY = Math.min(minY, s.y); 
-            maxX = Math.max(maxX, s.x + s.width); maxY = Math.max(maxY, s.y + s.height); 
-        });
+        sections.forEach(s => { minX = Math.min(minX, s.x); minY = Math.min(minY, s.y); maxX = Math.max(maxX, s.x + s.width); maxY = Math.max(maxY, s.y + s.height); });
         tables.forEach(t => {
             const w = t.isUniversal ? 180 : TABLE_WIDTH; 
             const h = t.isUniversal ? 100 : HEADER_HEIGHT + ((t.columns || []).length * COL_HEIGHT) + PADDING_TOP + 12;
-            minX = Math.min(minX, t.x); minY = Math.min(minY, t.y); 
-            maxX = Math.max(maxX, t.x + w); maxY = Math.max(maxY, t.y + h);
+            minX = Math.min(minX, t.x); minY = Math.min(minY, t.y); maxX = Math.max(maxX, t.x + w); maxY = Math.max(maxY, t.y + h);
         });
-        if (minX === Infinity) { minX = 0; minY = 0; maxX = 800; maxY = 600; } 
-        else { minX -= 60; minY -= 60; maxX += 60; maxY += 60; }
+        if (minX === Infinity) { minX = 0; minY = 0; maxX = 800; maxY = 600; } else { minX -= 60; minY -= 60; maxX += 60; maxY += 60; }
 
         let svgStr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${maxX - minX} ${maxY - minY}" width="${maxX - minX}" height="${maxY - minY}" style="background-color: #f8fafc; font-family: sans-serif;">\n`;
-        sections.forEach(sec => { 
-            svgStr += `  <g id="${sec.id}"><rect x="${sec.x}" y="${sec.y}" width="${sec.width}" height="${sec.height}" rx="12" fill="${sec.color || '#f8fafc'}" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6,4" /><path d="M ${sec.x} ${sec.y} L ${sec.x} ${sec.y + 40} L ${sec.x + sec.width} ${sec.y + 40} L ${sec.x + sec.width} ${sec.y} Z" fill="#e2e8f0" opacity="0.3" /><text x="${sec.x + 16}" y="${sec.y + 24}" font-size="12" font-weight="bold" fill="#334155">${sec.title}</text></g>\n`; 
-        });
+        sections.forEach(sec => { svgStr += `  <g id="${sec.id}"><rect x="${sec.x}" y="${sec.y}" width="${sec.width}" height="${sec.height}" rx="12" fill="${sec.color || '#f8fafc'}" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6,4" /><path d="M ${sec.x} ${sec.y} L ${sec.x} ${sec.y + 40} L ${sec.x + sec.width} ${sec.y + 40} L ${sec.x + sec.width} ${sec.y} Z" fill="#e2e8f0" opacity="0.3" /><text x="${sec.x + 16}" y="${sec.y + 24}" font-size="12" font-weight="bold" fill="#334155">${sec.title}</text></g>\n`; });
         validConnectionsToShow.forEach(conn => {
             const source = tables.find(t => t.id === conn.sourceTable), target = tables.find(t => t.id === conn.targetTable);
             const start = getOutputNodePos(source, conn.sourceCol, target), end = getInputNodePos(target, conn.targetCol, source);
@@ -658,9 +534,7 @@ export default function App() {
                 svgStr += `  </g>\n`;
             }
         });
-        
-        const safeFilename = `${projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_canvas.svg`;
-        triggerDownload("data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr + `</svg>`), safeFilename);
+        triggerDownload("data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr + `</svg>`), `${projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_canvas.svg`);
     };
 
     const exportDrawioXML = () => {
@@ -671,12 +545,10 @@ export default function App() {
         tables.forEach(table => {
             const parentId = table.parentId && sections.some(s => s.id === table.parentId) ? `sec_${table.parentId}` : '1';
             let localX = table.x, localY = table.y;
-            
             if (parentId !== '1') { 
                 const pSec = sections.find(s => s.id === table.parentId); 
                 if (pSec) { localX = table.x - pSec.x; localY = table.y - pSec.y; }
             }
-            
             if (table.isUniversal) { 
                 cells += `      <mxCell id="tbl_${table.id}" value="${table.name}&lt;br&gt;&lt;i&gt;${table.text || 'Loop Relay'}&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;strokeColor=${table.color || '#475569'};fillColor=#FFFFFF;align=center;fontSize=12;" vertex="1" parent="${parentId}"><mxGeometry x="${localX}" y="${localY}" width="180" height="100" as="geometry" /></mxCell>\n`;
             } else {
@@ -692,9 +564,7 @@ export default function App() {
             const style = isHead ? "edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;strokeColor=#6366F1;strokeWidth=2;dashed=1;endArrow=classic;endFill=1;" : "edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;strokeColor=#475569;strokeWidth=2;endArrow=classic;endFill=1;";
             cells += `      <mxCell id="conn_${conn.id}" value="${conn.info || ''}" style="${style}" edge="1" parent="1" source="${isHead ? `tbl_${conn.sourceTable}` : `col_${conn.sourceTable}_${conn.sourceCol}`}" target="${isHead ? `tbl_${conn.targetTable}` : `col_${conn.targetTable}_${conn.targetCol}`}"><mxGeometry relative="1" as="geometry" /></mxCell>\n`;
         });
-        
-        const safeFilename = `drawio_${projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.drawio`;
-        triggerDownload("data:text/xml;charset=utf-8," + encodeURIComponent(`<mxfile host="Electron" modified="${new Date().toISOString()}" agent="LineageApp" version="1.0" type="device">\n  <diagram id="lineage_workspace" name="${projectName}">\n    <mxGraphModel dx="1000" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">\n      <root>\n${cells}      </root>\n    </mxGraphModel>\n  </diagram>\n</mxfile>`), safeFilename);
+        triggerDownload("data:text/xml;charset=utf-8," + encodeURIComponent(`<mxfile host="Electron" modified="${new Date().toISOString()}" agent="LineageApp" version="1.0" type="device">\n  <diagram id="lineage_workspace" name="${projectName}">\n    <mxGraphModel dx="1000" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">\n      <root>\n${cells}      </root>\n    </mxGraphModel>\n  </diagram>\n</mxfile>`), `drawio_${projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.drawio`);
     };
 
     const handleImport = (e) => {
@@ -705,20 +575,14 @@ export default function App() {
             try {
                 const data = JSON.parse(event.target.result.trim());
                 if (data.tables && data.connections) { 
-                    setTables(data.tables); 
-                    setConnections(data.connections); 
-                    setSections(data.sections || []); 
-                    
-                    // Set the project name if it exists in the JSON
+                    setTables(data.tables); setConnections(data.connections); setSections(data.sections || []); 
                     if (data.projectName) setProjectName(data.projectName);
-                    
                     setViewport({ x: 0, y: 0, scale: 1 }); 
                     if (isMobile) setIsSidebarOpen(false); 
                 }
-            } catch (err) { alert("Failed to parse file."); }
+            } catch (error) { alert("Failed to parse file: " + error.message); }
         }; 
-        reader.readAsText(file); 
-        e.target.value = null;
+        reader.readAsText(file); e.target.value = null;
     };
 
     const handleBulkPaste = () => {
@@ -729,23 +593,8 @@ export default function App() {
             return { id: `col_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`, name: parts[0].trim(), type: (parts[1] || 'VARCHAR').trim().toUpperCase(), description: (parts[2] || '').trim() };
         }).filter(Boolean);
         setEditingTable(prev => ({ ...prev, columns: [...(prev.columns || []), ...newCols] })); 
-        setShowBulkPaste(false); 
-        setBulkPasteText('');
+        setShowBulkPaste(false); setBulkPasteText('');
     };
-
-    const validConnectionsToShow = useMemo(() => {
-        return connections.filter(conn => {
-            const srcTable = tables.find(t => t.id === conn.sourceTable);
-            const tgtTable = tables.find(t => t.id === conn.targetTable);
-            if (!srcTable || !tgtTable) return false;
-            
-            const sourceValid = conn.sourceCol?.includes('HEADER') || conn.sourceCol?.includes('univ_col') || srcTable.columns?.some(c => c.id === conn.sourceCol);
-            const targetValid = conn.targetCol?.includes('HEADER') || conn.targetCol?.includes('univ_col') || tgtTable.columns?.some(c => c.id === conn.targetCol);
-            
-            return sourceValid && targetValid;
-        });
-    }, [connections, tables]);
-
 
     // ============================================================================
     // MAIN RENDER LOOP
@@ -761,13 +610,7 @@ export default function App() {
                     <div className="h-14 flex items-center justify-between px-3 border-b border-slate-200 bg-slate-50 shrink-0">
                         <div className="flex items-center space-x-2 text-indigo-600 flex-1">
                             <Database className="w-5 h-5 shrink-0 ml-1" />
-                            <input 
-                                type="text" 
-                                value={projectName} 
-                                onChange={(e) => setProjectName(e.target.value)} 
-                                className="font-bold text-slate-800 bg-transparent border-none outline-none hover:bg-slate-200/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 rounded px-1.5 py-1 w-full transition-colors text-sm"
-                                placeholder="Project Name"
-                            />
+                            <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} className="font-bold text-slate-800 bg-transparent border-none outline-none hover:bg-slate-200/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 rounded px-1.5 py-1 w-full transition-colors text-sm" placeholder="Project Name" />
                         </div>
                         <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-1.5 text-slate-500 hover:bg-slate-200 rounded ml-1 shrink-0"><PanelLeftClose className="w-5 h-5" /></button>
                     </div>
@@ -787,21 +630,12 @@ export default function App() {
                         <div>
                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Export Data</div>
                             <div className="space-y-1">
-                                <button 
-                                    onClick={() => {
-                                        const exportPayload = {
-                                            projectName,
-                                            sections: sections.map(sec => ({ ...sec, children: tables.filter(t => t.parentId === sec.id).map(t => t.id) })),
-                                            tables: tables.map(t => ({ ...t, parentId: t.parentId || null })),
-                                            connections
-                                        };
-                                        const safeFilename = `${projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_lineage.json`;
-                                        triggerDownload("data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2)), safeFilename);
+                                <button onClick={() => {
+                                        const exportPayload = { projectName, sections: sections.map(sec => ({ ...sec, children: tables.filter(t => t.parentId === sec.id).map(t => t.id) })), tables: tables.map(t => ({ ...t, parentId: t.parentId || null })), connections };
+                                        triggerDownload("data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2)), `${projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_lineage.json`);
                                     }} 
                                     className="w-full flex items-center px-3 py-2 text-slate-700 hover:bg-blue-50 hover:text-blue-700 rounded transition text-sm text-left font-medium"
-                                >
-                                    <FileJson className="w-4 h-4 mr-2 text-blue-500" /> Save Full JSON
-                                </button>
+                                ><FileJson className="w-4 h-4 mr-2 text-blue-500" /> Save Full JSON</button>
                                 <button onClick={exportAsSVG} className="w-full flex items-center px-3 py-2 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 rounded transition text-sm text-left font-medium"><Layers className="w-4 h-4 mr-2 text-emerald-500" /> Export as SVG</button>
                                 <button onClick={exportDrawioXML} className="w-full flex items-center px-3 py-2 text-slate-700 hover:bg-purple-50 hover:text-purple-700 rounded transition text-sm text-left font-medium"><FileDown className="w-4 h-4 mr-2 text-purple-500" /> Draw.io (XML)</button>
                             </div>
@@ -833,14 +667,8 @@ export default function App() {
                     ref={wrapperRef}
                     className={`flex-1 relative bg-slate-50 touch-none overflow-hidden select-none ${isPanningCanvas ? 'cursor-grabbing' : 'cursor-grab'}`}
                     style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: `${Math.max(20 * viewport.scale, 4)}px ${Math.max(20 * viewport.scale, 4)}px`, backgroundPosition: `${viewport.x}px ${viewport.y}px` }}
-                    onWheel={handleWheelReact} 
-                    onMouseDown={handleCanvasDragStart} 
-                    onTouchStart={handleCanvasDragStart}
-                    onMouseMove={handleGlobalMove} 
-                    onTouchMove={handleGlobalMove} 
-                    onMouseUp={handleGlobalEnd} 
-                    onTouchEnd={handleGlobalEnd} 
-                    onMouseLeave={handleGlobalEnd}
+                    onWheel={handleWheelReact} onMouseDown={handleCanvasDragStart} onTouchStart={handleCanvasDragStart}
+                    onMouseMove={handleGlobalMove} onTouchMove={handleGlobalMove} onMouseUp={handleGlobalEnd} onTouchEnd={handleGlobalEnd} onMouseLeave={handleGlobalEnd}
                 >
                     <div className="absolute inset-0 pointer-events-none origin-top-left" style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})` }}>
                         
@@ -854,12 +682,15 @@ export default function App() {
                             </div>
                         )}
 
-                        {/* Memoized Sections */}
+                        {/* Compiler Managed Sections */}
                         {sections.map(sec => (
-                            <SectionBox key={sec.id} sec={sec} isGhosted={activeDrag?.id === sec.id} handlers={stableHandlers} />
+                            <SectionBox 
+                                key={sec.id} sec={sec} isGhosted={activeDrag?.id === sec.id} 
+                                onDragStart={handleSectionDragStart} onResizeStart={handleSectionResizeStart} onToggleLock={toggleSectionLock} onExport={exportSingleSection} onEdit={setEditingSection}
+                            />
                         ))}
 
-                        {/* Memoized Connections SVG */}
+                        {/* Compiler Managed Connections */}
                         <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1, overflow: 'visible' }}>
                             {connectingFrom && (() => {
                                 const sourceTable = tables.find(t => t.id === connectingFrom.tableId);
@@ -873,13 +704,16 @@ export default function App() {
                                 const source = tables.find(t => t.id === conn.sourceTable);
                                 const target = tables.find(t => t.id === conn.targetTable);
                                 if (!source || !target) return null;
-                                return <ConnectionLine key={conn.id} conn={conn} sourceTable={source} targetTable={target} isHovered={hoveredConnection === conn.id} viewportScale={viewport.scale} handlers={stableHandlers} />;
+                                return <ConnectionLine key={conn.id} conn={conn} sourceTable={source} targetTable={target} isHovered={hoveredConnection === conn.id} viewportScale={viewport.scale} onHover={handleConnHover} onHoverEnd={handleConnHoverEnd} onClick={setEditingConnection} />;
                             })}
                         </svg>
 
-                        {/* Memoized Nodes */}
+                        {/* Compiler Managed Nodes */}
                         {tables.map(table => (
-                            <TableNode key={table.id} table={table} isGhosted={activeDrag?.id === table.id || activeDrag?.children?.some(c => c.id === table.id)} handlers={stableHandlers} />
+                            <TableNode 
+                                key={table.id} table={table} isGhosted={activeDrag?.id === table.id || activeDrag?.children?.some(c => c.id === table.id)} 
+                                onDragStart={handleTableDragStart} onEdit={setEditingTable} onConnectionStart={handleConnectionStart}
+                            />
                         ))}
                     </div>
                 </div>
