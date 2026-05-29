@@ -262,6 +262,8 @@ const TableNode = React.memo(({ table, isGhosted, handlers }) => {
 // COMPONENT WORKSPACE (Main App)
 // ============================================================================
 export default function App() {
+    const [projectName, setProjectName] = useState('Lineage Map');
+    
     const [tables, setTables] = useState([{
         id: 't1', name: 'raw_users', x: 80, y: 150, color: RANK_COLORS[4].hex, parentId: 'sec1',
         columns: [{ id: 'c1', name: 'id', type: 'INT', description: 'Primary unique identifier' }, { id: 'c2', name: 'full_name', type: 'VARCHAR', description: 'User full name from source' }]
@@ -656,7 +658,9 @@ export default function App() {
                 svgStr += `  </g>\n`;
             }
         });
-        triggerDownload("data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr + `</svg>`), "data_lineage_canvas.svg");
+        
+        const safeFilename = `${projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_canvas.svg`;
+        triggerDownload("data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr + `</svg>`), safeFilename);
     };
 
     const exportDrawioXML = () => {
@@ -688,7 +692,9 @@ export default function App() {
             const style = isHead ? "edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;strokeColor=#6366F1;strokeWidth=2;dashed=1;endArrow=classic;endFill=1;" : "edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;strokeColor=#475569;strokeWidth=2;endArrow=classic;endFill=1;";
             cells += `      <mxCell id="conn_${conn.id}" value="${conn.info || ''}" style="${style}" edge="1" parent="1" source="${isHead ? `tbl_${conn.sourceTable}` : `col_${conn.sourceTable}_${conn.sourceCol}`}" target="${isHead ? `tbl_${conn.targetTable}` : `col_${conn.targetTable}_${conn.targetCol}`}"><mxGeometry relative="1" as="geometry" /></mxCell>\n`;
         });
-        triggerDownload("data:text/xml;charset=utf-8," + encodeURIComponent(`<mxfile host="Electron" modified="${new Date().toISOString()}" agent="LineageApp" version="1.0" type="device">\n  <diagram id="lineage_workspace" name="Data Lineage Flow">\n    <mxGraphModel dx="1000" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">\n      <root>\n${cells}      </root>\n    </mxGraphModel>\n  </diagram>\n</mxfile>`), "drawio_lineage_flow.drawio");
+        
+        const safeFilename = `drawio_${projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.drawio`;
+        triggerDownload("data:text/xml;charset=utf-8," + encodeURIComponent(`<mxfile host="Electron" modified="${new Date().toISOString()}" agent="LineageApp" version="1.0" type="device">\n  <diagram id="lineage_workspace" name="${projectName}">\n    <mxGraphModel dx="1000" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">\n      <root>\n${cells}      </root>\n    </mxGraphModel>\n  </diagram>\n</mxfile>`), safeFilename);
     };
 
     const handleImport = (e) => {
@@ -702,6 +708,10 @@ export default function App() {
                     setTables(data.tables); 
                     setConnections(data.connections); 
                     setSections(data.sections || []); 
+                    
+                    // Set the project name if it exists in the JSON
+                    if (data.projectName) setProjectName(data.projectName);
+                    
                     setViewport({ x: 0, y: 0, scale: 1 }); 
                     if (isMobile) setIsSidebarOpen(false); 
                 }
@@ -748,9 +758,18 @@ export default function App() {
             {/* Sidebar Navigation */}
             <div className={`absolute md:relative z-40 h-full bg-white border-r border-slate-200 shadow-2xl md:shadow-none transition-transform duration-300 ease-in-out flex flex-col w-64 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:hidden'}`}>
                 <div className="flex-1 flex flex-col overflow-y-auto w-full">
-                    <div className="h-14 flex items-center justify-between px-4 border-b border-slate-200 bg-slate-50 shrink-0">
-                        <div className="flex items-center space-x-2 text-indigo-600"><Database className="w-5 h-5" /><span className="font-bold text-slate-800">Lineage Map</span></div>
-                        <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-1.5 text-slate-500 hover:bg-slate-200 rounded"><PanelLeftClose className="w-5 h-5" /></button>
+                    <div className="h-14 flex items-center justify-between px-3 border-b border-slate-200 bg-slate-50 shrink-0">
+                        <div className="flex items-center space-x-2 text-indigo-600 flex-1">
+                            <Database className="w-5 h-5 shrink-0 ml-1" />
+                            <input 
+                                type="text" 
+                                value={projectName} 
+                                onChange={(e) => setProjectName(e.target.value)} 
+                                className="font-bold text-slate-800 bg-transparent border-none outline-none hover:bg-slate-200/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 rounded px-1.5 py-1 w-full transition-colors text-sm"
+                                placeholder="Project Name"
+                            />
+                        </div>
+                        <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-1.5 text-slate-500 hover:bg-slate-200 rounded ml-1 shrink-0"><PanelLeftClose className="w-5 h-5" /></button>
                     </div>
 
                     <div className="p-4 space-y-6">
@@ -768,7 +787,21 @@ export default function App() {
                         <div>
                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Export Data</div>
                             <div className="space-y-1">
-                                <button onClick={() => triggerDownload("data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ sections: sections.map(sec => ({ ...sec, children: tables.filter(t => t.parentId === sec.id).map(t => t.id) })), tables: tables.map(t => ({ ...t, parentId: t.parentId || null })), connections }, null, 2)), "structured_data_lineage.json")} className="w-full flex items-center px-3 py-2 text-slate-700 hover:bg-blue-50 hover:text-blue-700 rounded transition text-sm text-left font-medium"><FileJson className="w-4 h-4 mr-2 text-blue-500" /> Save Full JSON</button>
+                                <button 
+                                    onClick={() => {
+                                        const exportPayload = {
+                                            projectName,
+                                            sections: sections.map(sec => ({ ...sec, children: tables.filter(t => t.parentId === sec.id).map(t => t.id) })),
+                                            tables: tables.map(t => ({ ...t, parentId: t.parentId || null })),
+                                            connections
+                                        };
+                                        const safeFilename = `${projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_lineage.json`;
+                                        triggerDownload("data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2)), safeFilename);
+                                    }} 
+                                    className="w-full flex items-center px-3 py-2 text-slate-700 hover:bg-blue-50 hover:text-blue-700 rounded transition text-sm text-left font-medium"
+                                >
+                                    <FileJson className="w-4 h-4 mr-2 text-blue-500" /> Save Full JSON
+                                </button>
                                 <button onClick={exportAsSVG} className="w-full flex items-center px-3 py-2 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 rounded transition text-sm text-left font-medium"><Layers className="w-4 h-4 mr-2 text-emerald-500" /> Export as SVG</button>
                                 <button onClick={exportDrawioXML} className="w-full flex items-center px-3 py-2 text-slate-700 hover:bg-purple-50 hover:text-purple-700 rounded transition text-sm text-left font-medium"><FileDown className="w-4 h-4 mr-2 text-purple-500" /> Draw.io (XML)</button>
                             </div>
